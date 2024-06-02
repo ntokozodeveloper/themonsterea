@@ -12,12 +12,14 @@ app = Flask(__name__)
 CORS(app)
 
 def calculate_probability(sma_50, sma_200):
+    """Calculate the probability based on SMA distances."""
     distance = abs(sma_50 - sma_200)
     max_distance = max(sma_50, sma_200)
     probability = (distance / max_distance) * 100
     return round(probability, 2)
 
 def recommend_lot_size(probability, account_balance):
+    """Recommend lot size based on probability and account balance."""
     risk_per_trade = 0.01  # 1% of the account balance
     if probability >= 80:
         lot_size_factor = 0.02
@@ -32,6 +34,7 @@ def recommend_lot_size(probability, account_balance):
     return round(lot_size, 2)
 
 def download_data(ticker_symbol, interval, start_date, end_date):
+    """Download historical data for a given ticker symbol and interval."""
     try:
         data = yf.download(ticker_symbol, start=start_date, end=end_date, interval=interval)
         if data.empty:
@@ -41,6 +44,30 @@ def download_data(ticker_symbol, interval, start_date, end_date):
     except Exception as e:
         logging.error(f"Error downloading data for {ticker_symbol} at interval {interval}: {e}")
         return None
+
+def process_data(data_frames):
+    """Calculate SMAs and generate trade signals."""
+    signals = {}
+    
+    for interval, data in data_frames.items():
+        data['SMA_50'] = data['Close'].rolling(window=50).mean()
+        data['SMA_200'] = data['Close'].rolling(window=200).mean()
+        data['Signal'] = np.where(data['SMA_50'] > data['SMA_200'], 1, 0)
+        data['Position'] = data['Signal'].diff()
+        signals[interval] = data.iloc[-1] if not data.empty else None
+        
+    return signals
+
+def generate_trade_signals(signals):
+    """Determine trade signals based on the shortest timeframe with a signal."""
+    for interval in ['30m', '1h']:
+        if signals.get(interval) is not None:
+            recent_signal = signals[interval]
+            trade_signal = 'buy' if recent_signal['Signal'] == 1 else 'sell'
+            entry_price = recent_signal['Close']
+            probability = calculate_probability(recent_signal['SMA_50'], recent_signal['SMA_200'])
+            return trade_signal, entry_price, probability, interval
+    return 'hold', None, 0, 'No signal'
 
 @app.route('/api/trade', methods=['POST'])
 def trade():
@@ -56,60 +83,20 @@ def trade():
     if not symbol or not amount or not contract_type:
         return jsonify({'errors': 'Invalid input'}), 400
 
-    
     # Adjust ticker symbol format for Yahoo Finance
     ticker_symbol = f'{symbol}=X'
 
     start_date = '2020-01-01'
     end_date = '2026-05-29'
 
-    intervals = ['3mo', '1mo', '1wk', '1d', '1h', '90m', '30m', '15m']
-    data_frames = {}
-
-    for interval in intervals:
-        data_frames[interval] = download_data(ticker_symbol, interval, start_date, end_date)
+    intervals = ['3mo', '1mo', '1wk', '1d', '1h', '30m']
+    data_frames = {interval: download_data(ticker_symbol, interval, start_date, end_date) for interval in intervals}
 
     # Filter out None values
     data_frames = {k: v for k, v in data_frames.items() if v is not None}
 
-    # Calculate SMAs for available time frames
-    for interval, data in data_frames.items():
-        data['SMA_50'] = data['Close'].rolling(window=50).mean()
-        data['SMA_200'] = data['Close'].rolling(window=200).mean()
-
-    # Generate trade signals based on different time frames
-    timeframe_displayed = None
-    recent_signal_1h = None
-    recent_signal_30m = None
-
-    if '1h' in data_frames:
-        data_1h = data_frames['1h']
-        data_1h['Signal'] = np.where(data_1h['SMA_50'] > data_1h['SMA_200'], 1, 0)
-        data_1h['Position'] = data_1h['Signal'].diff()
-        recent_signal_1h = data_1h.iloc[-1] if not data_1h.empty else None
-
-    if '30m' in data_frames:
-        data_30m = data_frames['30m']
-        data_30m['Signal'] = np.where(data_30m['SMA_50'] > data_30m['SMA_200'], 1, 0)
-        data_30m['Position'] = data_30m['Signal'].diff()
-        recent_signal_30m = data_30m.iloc[-1] if not data_30m.empty else None
-
-    # Determine trade signal (based on the shortest timeframe with a signal)
-    if recent_signal_30m is not None:
-        trade_signal = 'buy' if recent_signal_30m['Signal'] == 1 else 'sell'
-        entry_price = recent_signal_30m['Close']
-        probability = calculate_probability(recent_signal_30m['SMA_50'], recent_signal_30m['SMA_200'])
-        timeframe_displayed = '30 Minutes'
-    elif recent_signal_1h is not None:
-        trade_signal = 'buy' if recent_signal_1h['Signal'] == 1 else 'sell'
-        entry_price = recent_signal_1h['Close']
-        probability = calculate_probability(recent_signal_1h['SMA_50'], recent_signal_1h['SMA_200'])
-        timeframe_displayed = '1 Hour'
-    else:
-        trade_signal = 'hold'
-        entry_price = None
-        probability = 0
-        timeframe_displayed = 'No signal'
+    signals = process_data(data_frames)
+    trade_signal, entry_price, probability, timeframe_displayed = generate_trade_signals(signals)
 
     if trade_signal != 'hold':
         stop_loss = entry_price * (1 - stop_loss_percent / 100) if trade_signal == 'buy' else entry_price * (1 + stop_loss_percent / 100)
@@ -118,9 +105,7 @@ def trade():
         stop_loss = None
         take_profit = None
 
-    lot_sizes = {}
-    for balance in [100, 200, 500, 1000, 2000, 5000, 10000]:
-        lot_sizes[f'Account Balance {balance}'] = recommend_lot_size(probability, balance)
+    lot_sizes = {f'Account Balance {balance}': recommend_lot_size(probability, balance) for balance in [100, 200, 500, 1000, 2000, 5000, 10000]}
 
     result = {
         'status': 'success',
