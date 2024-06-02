@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex">
+    <meta name="googlebot" content="noindex">
+    <title>The Monster Trading Robot 1.0 (Signals Version)</title>
+
+</head>
+<body>
+   
+<style>
+   
+@import url('https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,100..900;1,100..900&family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap');        body {
+    background-color: rgb(3, 3, 0);
+    color: rgb(255, 0, 0);
+    font-family: Public Sans, sans-serif;
+    margin: 0;
+    padding: 0;
+}
+html {
+    font-family: Public Sans, sans-serif;
+}
+
+.signal-output {
+    margin-top: 20px;
+    padding: 10px;
+    border: 1px solid #ccc;
+}
+.signal-output p {
+  color: red;
+}
+.signal-output h1 {
+  color: red;
+}
+p {
+  color:red;
+}
+
+form {
+    background-color: rgb(255, 23, 23);
+    border-radius: 6px;
+    padding: 20px;
+    margin: 20px auto;
+    max-width: 400px;
+}
+label {
+    display: block;
+    margin-bottom: 10px;
+    color: black;
+    font-weight: bold;
+}
+input[type="text"],
+input[type="number"] {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 20px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+input[type="submit"] {
+    width: 100%;
+    padding: 10px;
+    background-color: #000000;
+    color: rgb(255, 4, 4);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+}
+input[type="submit"]:hover {
+    background-color: #0a0f0a;
+}
+.Click-here {
+cursor: pointer;
+background-color: rgb(11, 73, 145);
+color: #fff;
+width: 189px;
+text-align: center;
+font-size:16px;
+padding: 5px 0;
+margin: 0 auto;
+border-radius: 8px;
+transition:background-image 3s ease-in-out;
+}
+.Click-here:hover{
+transition:background-image 3s ease-in-out;
+background-image: linear-gradient(90deg, #40fede 0%, #05282b 100%);
+}
+.custom-model-main {
+text-align: center;
+overflow: hidden;
+position: fixed;
+top: 0;
+right: 0;
+bottom: 0;
+left: 0; /* z-index: 1050; */
+-webkit-overflow-scrolling: touch;
+outline: 0;
+opacity: 0;
+-webkit-transition: opacity 0.15s linear, z-index 0.15;
+-o-transition: opacity 0.15s linear, z-index 0.15;
+transition: opacity 0.15s linear, z-index 0.15;
+z-index: -1;
+overflow-x: hidden;
+overflow-y: auto;
+}
+
+.model-open {
+z-index: 99999;
+opacity: 1;
+overflow: hidden;
+}
+.custom-model-inner {
+-webkit-transform: translate(0, -25%);
+-ms-transform: translate(0, -25%);
+transform: translate(0, -25%);
+-webkit-transition: -webkit-transform 0.3s ease-out;
+-o-transition: -o-transform 0.3s ease-out;
+transition: -webkit-transform 0.3s ease-out;
+-o-transition: transform 0.3s ease-out;
+transition: transform 0.3s ease-out;
+transition: transform 0.3s ease-out, -webkit-transform 0.3s ease-out;
+display: inline-block;
+vertical-align: middle;
+width: 600px;
+margin: 30px auto;
+max-width: 97%;
+}
+.custom-model-wrap {
+display: block;
+width: 100%;
+position: relative;
+background-color: #fff;
+border: 1px solid #999;
+border: 1px solid rgba(0, 0, 0, 0.2);
+border-radius: 6px;
+-webkit-box-shadow: 0 3px 9px rgba(0, 0, 0, 0.5);
+box-shadow: 0 3px 9px rgba(0, 0, 0, 0.5);
+background-clip: padding-box;
+outline: 0;
+text-align: left;
+color: black;
+padding: 20px;
+-webkit-box-sizing: border-box;
+-moz-box-sizing: border-box;
+box-sizing: border-box;
+max-height: calc(100vh - 70px);
+overflow-y: auto;
+}
+.model-open .custom-model-inner {
+-webkit-transform: translate(0, 0);
+-ms-transform: translate(0, 0);
+transform: translate(0, 0);
+position: relative;
+z-index: 999;
+}
+.model-open .bg-overlay {
+background: rgba(0, 0, 0, 0.6);
+z-index: 99;
+}
+.bg-overlay {
+background: rgba(0, 0, 0, 0);
+height: 100vh;
+width: 100%;
+position: fixed;
+left: 0;
+top: 0;
+right: 0;
+bottom: 0;
+z-index: 0;
+-webkit-transition: background 0.15s linear;
+-o-transition: background 0.15s linear;
+transition: background 0.15s linear;
+}
+.close-btn {
+position: absolute;
+right: 0;
+top: -30px;
+cursor: pointer;
+z-index: 99;
+font-size: 30px;
+color: rgb(255, 255, 255);
+}
+
+@media screen and (min-width:800px){
+.custom-model-main:before {
+content: "";
+display: inline-block;
+height: auto;
+vertical-align: middle;
+margin-right: -0px;
+height: 100%;
+}
+}
+@media screen and (max-width:799px){
+.custom-model-inner{margin-top: 45px;}
+}
+input[type="password"],
+input[type="password"] {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 20px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+input[type="text"],
+input[type="number"],
+select {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 20px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-family: Public Sans, sans-serif;
+}
+</style>
+    <h1 style="text-align: center;" >The Monster Trading Robot 1.0</h1>
+    <h3 style="text-align: center;" >Reapers of the Forex Markets | Signals Version</h3>
+   
+    <form id="tradeForm" action="/trade" method="post">
+        <label for="symbol">Trading Pair:</label>
+        <select name="symbol" id="symbol" required>
+            <option value="">Select a trading pair</option>
+            <optgroup label="Forex Pairs">
+              <option value="GBPJPY">GBP/JPY</option>
+              <option value="EURJPY">EUR/JPY</option>
+              <option value="AUDJPY">AUD/JPY</option>
+              <option value="EURUSD">EUR/USD</option>
+              <option value="GBPUSD">GBP/USD</option>
+              <option value="AUDUSD">AUD/USD</option>
+              <option value="USDJPY">USD/JPY</option>
+              <option value="USDZAR">USD/ZAR</option>
+              <option value="USDCAD">USD/CAD</option>
+              <option value="USDCHF">USD/CHF</option>
+              <option value="EURGBP">EUR/GBP</option>
+              <option value="EURCHF">EUR/CHF</option>
+              <option value="USDTRY">USD/TRY</option>
+              <option value="USDCNH">USD/CNH</option>
+            </optgroup>
+        </select><br><br>
+        
+        <label for="amount">Bet Amount:</label>
+        <input type="number" id="amount" name="amount" step="0.01" required><br><br>
+        
+        <label for="contract_type">Action:</label>
+        <select name="contract_type" id="contract_type" required>
+            <option value="buy">Buy</option>
+            <option value="sell">Sell</option>
+        </select><br><br>
+
+        <label for="serialKey">Serial Key:</label>
+        <input type="text" id="serialKey" name="serialKey" required><br><br>
+        
+        <input type="submit" value="Get Signals">
+    </form>
+
+    <div id="signal-output" class="signal-output"></div>
+
+    <script>
+        document.getElementById('tradeForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            const form = event.target;
+            const formData = new FormData(form);
+            const formProps = Object.fromEntries(formData);
+
+            try {
+                const response = await fetch('/trade', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formProps)
+                });
+                const result = await response.json();
+
+                const signalOutput = document.getElementById('signal-output');
+                if (result.status === 'success') {
+                    signalOutput.innerHTML = `
+                        <p>${result.message}</p>
+                        <pre>${JSON.stringify(result.recent_signal, null, 2)}</pre>
+                    `;
+                } else {
+                    signalOutput.innerHTML = `<p>Error: ${result.errors}</p>`;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        });
+
+        // Display current date and time
+        const datetime = new Date();
+        document.getElementById("datetime").textContent = datetime.toLocaleString();
+    </script>
+</body>
+</html>
