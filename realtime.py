@@ -6,7 +6,7 @@ import numpy as np
 import logging
 
 # Setup logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 app = Flask(__name__)
 CORS(app)
@@ -33,41 +33,61 @@ def recommend_lot_size(probability, account_balance):
     lot_size = account_balance * risk_per_trade * lot_size_factor
     return round(lot_size, 2)
 
+
 def download_data(ticker_symbol, interval, start_date, end_date):
-    """Download historical data for a given ticker symbol and interval."""
+    logging.info(f"Downloading data for {ticker_symbol} from {start_date} to {end_date} with interval {interval}")
     try:
         data = yf.download(ticker_symbol, start=start_date, end=end_date, interval=interval)
         if data.empty:
             logging.info(f"No data available for {ticker_symbol} at interval {interval}")
             return None
+        logging.info(f"Successfully downloaded data for {ticker_symbol} at interval {interval}")
         return data
     except Exception as e:
         logging.error(f"Error downloading data for {ticker_symbol} at interval {interval}: {e}")
         return None
+
 
 def process_data(data_frames):
     """Calculate SMAs and generate trade signals."""
     signals = {}
     
     for interval, data in data_frames.items():
+        logging.info(f"Processing data for interval {interval}")
         data['SMA_50'] = data['Close'].rolling(window=50).mean()
         data['SMA_200'] = data['Close'].rolling(window=200).mean()
         data['Signal'] = np.where(data['SMA_50'] > data['SMA_200'], 1, 0)
         data['Position'] = data['Signal'].diff()
         signals[interval] = data.iloc[-1] if not data.empty else None
+        logging.info(f"Processed data for interval {interval}: {signals[interval]}")
         
     return signals
 
 def generate_trade_signals(signals):
-    """Determine trade signals based on the shortest timeframe with a signal."""
+    logging.info("Generating trade signals")
+    
+    # Try preferred timeframes first
     for interval in ['30m', '1h']:
         if signals.get(interval) is not None:
             recent_signal = signals[interval]
             trade_signal = 'buy' if recent_signal['Signal'] == 1 else 'sell'
             entry_price = recent_signal['Close']
             probability = calculate_probability(recent_signal['SMA_50'], recent_signal['SMA_200'])
+            logging.info(f"Trade signal: {trade_signal} for interval {interval}")
             return trade_signal, entry_price, probability, interval
+
+    # Check daily timeframe if no signal found in preferred timeframes
+    if signals.get('1d') is not None:
+        recent_signal = signals['1d']
+        trade_signal = 'buy' if recent_signal['Signal'] == 1 else 'sell'
+        entry_price = recent_signal['Close']
+        probability = calculate_probability(recent_signal['SMA_50'], recent_signal['SMA_200'])
+        logging.info(f"Trade signal: {trade_signal} for daily interval")
+        return trade_signal, entry_price, probability, '1d'
+
+    logging.info("No trade signal generated")
     return 'hold', None, 0, 'No signal'
+
 
 @app.route('/api/trade', methods=['POST'])
 def trade():
@@ -84,7 +104,34 @@ def trade():
         return jsonify({'errors': 'Invalid input'}), 400
 
     # Adjust ticker symbol format for Yahoo Finance
-    ticker_symbol = f'{symbol}=X'
+    if symbol == 'USDZAR':
+        ticker_symbol ='USDZAR=X'
+    if symbol == 'GBPJPY':
+        ticker_symbol = 'GBPJPY=X'
+    elif symbol == 'EURUSD':
+        ticker_symbol = 'EURUSD=X'
+    elif symbol == 'USDJPY':
+        ticker_symbol = 'USDJPY=X'
+    elif symbol == 'AUDUSD':
+        ticker_symbol = 'AUDUSD=X'
+    elif symbol == 'USDCAD':
+        ticker_symbol = 'USDCAD=X'
+    elif symbol == 'USDCHF':
+        ticker_symbol = 'USDCHF=X'
+    elif symbol == 'EURJPY':
+        ticker_symbol = 'EURJPY=X'
+    elif symbol == 'GBPJPY':
+        ticker_symbol = 'GBPJPY=X'
+    elif symbol == 'AUDJPY':
+        ticker_symbol = 'AUDJPY=X'
+    elif symbol == 'EURGBP':
+        ticker_symbol = 'EURGBP=X'
+    elif symbol == 'EURCHF':
+        ticker_symbol = 'EURCHF=X'
+    elif symbol == 'EURAUD':
+        ticker_symbol = 'EURAUD=X'
+    else:
+        ticker_symbol = f'{symbol}=X'  # Default case
 
     start_date = '2020-01-01'
     end_date = '2026-05-29'
