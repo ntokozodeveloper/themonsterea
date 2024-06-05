@@ -14,6 +14,55 @@ const io = new Server(server);
 // Use Helmet to help secure your app with various HTTP headers
 app.use(helmet());
 
+//Deriv Connection
+const WebSocket = require('ws');
+const DerivAPI = require('@deriv/deriv-api/dist/DerivAPI');
+
+const app_id = 61959; // Replace with your app_id or leave as 1089 for testing.
+const websocket = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${app_id}`);
+const api = new DerivAPI({ connection: websocket }); // Pass websocket here
+const basic = api.basic;
+const ping_interval = 12000; // it's in milliseconds, which equals to 120 seconds
+let interval;
+
+
+
+basic.ping().then(console.log);
+
+
+//Pass
+
+// subscribe to `open` event
+websocket.addEventListener('open', (event) => {
+  console.log('websocket connection established: ', event);
+  const sendMessage = JSON.stringify({ ping: 1 });
+  websocket.send(sendMessage);
+
+  // to Keep the connection alive
+  interval = setInterval(() => {
+    const sendMessage = JSON.stringify({ ping: 1 });
+    websocket.send(sendMessage);
+  }, ping_interval);
+});
+
+// subscribe to `message` event
+websocket.addEventListener('message', (event) => {
+  const receivedMessage = JSON.parse(event.data);
+  console.log('new message received from server: ', receivedMessage);
+});
+
+// subscribe to `close` event
+websocket.addEventListener('close', (event) => {
+  console.log('websocket connectioned closed: ', event);
+  clearInterval(interval);
+});
+
+// subscribe to `error` event
+websocket.addEventListener('error', (event) => {
+  console.log('an error happend in our websocket connection', event);
+});
+
+
 // Body parser middleware
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -52,31 +101,27 @@ app.get('/', (req, res) => {
 app.post('/trade', async (req, res) => {
     const { serialKey, symbol, amount, contract_type } = req.body;
 
-    // Validate the serial key
     if (!validSerialKeys.includes(serialKey)) {
         return res.status(401).json({ errors: 'Invalid serial key.' });
     }
 
-    // Validate the form data
     if (!symbol || !amount || !contract_type) {
         return res.status(400).json({ errors: 'All fields are required.' });
     }
 
     try {
-        // Send the data to the Python backend
         const response = await axios.post('http://localhost:5000/api/trade', {
             symbol,
             amount,
             contract_type
         });
-
-        // Emit trade update to all connected clients
         io.emit('tradeUpdate', response.data);
-
         res.json(response.data);
     } catch (error) {
+        console.error("Error sending request to Flask server:", error.message);
         res.status(500).json({ errors: error.message });
     }
+    
 });
 
 // Error handling for undefined routes
@@ -92,9 +137,9 @@ app.use((err, req, res, next) => {
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
-    console.log('New client connected');
+    console.log('A user connected');
     socket.on('disconnect', () => {
-        console.log('Client disconnected');
+        console.log('User disconnected');
     });
 });
 
