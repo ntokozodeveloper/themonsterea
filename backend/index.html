@@ -253,12 +253,20 @@ select {
             <option value="buy">Buy</option>
             <option value="sell">Sell</option>
         </select><br><br>
-
+    
         <label for="serialKey">Serial Key:</label>
         <input type="text" id="serialKey" name="serialKey" required><br><br>
+    
+        <label for="app_id">Deriv APP ID:</label>
+        <input type="text" id="app_id" name="app_id" required><br><br>
+    
+        <label for="api_token">Deriv API Token:</label>
+        <input type="text" id="api_token" name="api_token" required><br><br>
         
         <input type="submit" value="Get Signals">
     </form>
+    
+
 
     <div id="signal-output" class="signal-output"></div>
 

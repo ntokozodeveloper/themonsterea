@@ -9,7 +9,8 @@ router.post('/',
     [
         check('symbol').isString().trim().notEmpty(),
         check('amount').isNumeric(),
-        check('deriv_api_token').isString().trim().notEmpty()
+        check('deriv_api_token').isString().trim().notEmpty(),
+        check('app_id').isString().trim().notEmpty()
     ],
     async (req, res) => {
         const errors = validationResult(req);

@@ -1,4 +1,4 @@
 module.exports = {
-    DERIV_API_TOKEN: 'h2fEMgf37AjUpbp',
-    DERIV_API_URL: 'wss://ws.binaryws.com/websockets/v3?app_id=61959'
+    DERIV_API_TOKEN: 'zjAEurAdMS5Eghv',
+    DERIV_API_URL: 'wss://ws.derivws.com/websockets/v3?app_id=61999'
 };

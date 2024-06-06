@@ -14,7 +14,7 @@ from deriv_api import DerivAPI
 import websockets
 
 # Setup logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 app = Flask(__name__)
 CORS(app)
@@ -28,11 +28,10 @@ def handle_connect():
 def handle_disconnect():
     print('Client disconnected')
 
-async def initialize_deriv_api():
+# Deriv Connection
+async def initialize_deriv_api(app_id, api_token):
     try:
-        # Replace with your actual token and ensure it has the necessary permissions
-        auth_token = 'CgSoT3CZ2GFjviT'
-        api = DerivAPI(app_id='61959', endpoint='wss://ws.derivws.com/websockets/v3?app_id=61959', auth_token=auth_token)
+        api = DerivAPI(app_id=app_id, endpoint=f'wss://ws.derivws.com/websockets/v3?app_id={app_id}&auth_token={api_token}')
         await api.api_connect()
         logging.info("Successfully connected to DerivAPI")
         return api
@@ -54,6 +53,9 @@ async def fetch_deriv_data(api, symbol, interval, start_date, end_date):
         }
         deriv_interval = interval_mapping.get(interval, '1d')
 
+        # Log the request details
+        logging.debug(f"Fetching Deriv data for {symbol} with interval {interval} from {start_date} to {end_date}")
+
         ticks_history_request = {
             "ticks_history": symbol,
             "adjust_start_time": 1,
@@ -73,6 +75,7 @@ async def fetch_deriv_data(api, symbol, interval, start_date, end_date):
         df['timestamp'] = pd.to_datetime(df['epoch'], unit='s')
         df.set_index('timestamp', inplace=True)
         df.rename(columns={'open': 'Open', 'high': 'High', 'low': 'Low', 'close': 'Close', 'volume': 'Volume'}, inplace=True)
+        logging.info(f"Successfully fetched Deriv data for {symbol} with interval {interval}")
         return df[['Open', 'High', 'Low', 'Close', 'Volume']]
     except Exception as e:
         logging.error(f"Error fetching Deriv data: {e}")
@@ -179,69 +182,62 @@ def generate_trade_signals(signals):
 @app.route('/api/trade', methods=['POST'])
 async def trade():
     logging.info("Received request at /api/trade")
-    try:
-        data = request.json
+    data = request.json
 
-        symbol = data.get('symbol')
-        amount = data.get('amount')
-        contract_type = data.get('contract_type')
-        deriv_api_token = data.get('deriv_api_token')
-        stop_loss_percent = data.get('stop_loss_percent', 1)
-        take_profit_percent = data.get('take_profit_percent', 2)
+    symbol = data.get('symbol')
+    amount = data.get('amount')
+    contract_type = data.get('contract_type')
+    app_id = data.get('app_id')
+    api_token = data.get('api_token')
+    stop_loss_percent = data.get('stop_loss_percent', 1)
+    take_profit_percent = data.get('take_profit_percent', 2)
 
-        if not symbol or not amount or not contract_type:
-            return jsonify({'errors': 'Invalid input'}), 400
+    if not symbol or not amount or not contract_type or not app_id or not api_token:
+        return jsonify({'errors': 'Invalid input'}), 400
 
-        ticker_symbol = f'{symbol}=X'
-        start_date = '2020-01-01'
-        end_date = '2026-05-29'
+    ticker_symbol = f'{symbol}=X'
+    start_date = '2020-01-01'
+    end_date = '2026-05-29'
 
-        intervals = ['3mo', '1mo', '1wk', '1d', '1h', '30m']
-        data_frames = {}
+    intervals = ['3mo', '1mo', '1wk', '1d', '1h', '30m']
+    data_frames = {}
 
-        api = await initialize_deriv_api()
-        if api is None:
-            logging.error("Failed to initialize DerivAPI")
-            return jsonify({'errors': 'Failed to connect to DerivAPI'}), 500
+    api = await initialize_deriv_api(app_id, api_token)
+    if api is None:
+        return jsonify({'errors': 'Failed to connect to DerivAPI'}), 500
 
-        for interval in intervals:
-            logging.info(f"Fetching data for interval: {interval}")
-            yf_data = download_data(ticker_symbol, interval, start_date, end_date)
-            if yf_data is None or len(yf_data) < 50:
-                logging.info(f"Fetching Deriv data for interval: {interval}")
-                deriv_data = await fetch_deriv_data(api, symbol, interval, start_date, end_date)
-                yf_data = combine_data(yf_data, deriv_data)
-            if yf_data is not None:
-                data_frames[interval] = yf_data
+    for interval in intervals:
+        yf_data = download_data(ticker_symbol, interval, start_date, end_date)
+        if yf_data is None or len(yf_data) < 50:
+            deriv_data = await fetch_deriv_data(api, symbol, interval, start_date, end_date)
+            yf_data = combine_data(yf_data, deriv_data)
+        if yf_data is not None:
+            data_frames[interval] = yf_data
 
-        signals = process_data(data_frames)
-        trade_signal, entry_price, probability, timeframe_displayed = generate_trade_signals(signals)
+    signals = process_data(data_frames)
+    trade_signal, entry_price, probability, timeframe_displayed = generate_trade_signals(signals)
 
-        if trade_signal != 'hold':
-            stop_loss = entry_price * (1 - stop_loss_percent / 100) if trade_signal == 'buy' else entry_price * (1 + stop_loss_percent / 100)
-            take_profit = entry_price * (1 + take_profit_percent / 100) if trade_signal == 'buy' else entry_price * (1 - take_profit_percent / 100)
-        else:
-            stop_loss = None
-            take_profit = None
+    if trade_signal != 'hold':
+        stop_loss = entry_price * (1 - stop_loss_percent / 100) if trade_signal == 'buy' else entry_price * (1 + stop_loss_percent / 100)
+        take_profit = entry_price * (1 + take_profit_percent / 100) if trade_signal == 'buy' else entry_price * (1 - take_profit_percent / 100)
+    else:
+        stop_loss = None
+        take_profit = None
 
-        lot_sizes = {f'Account Balance {balance}': recommend_lot_size(probability, balance) for balance in [100, 200, 500, 1000, 2000, 5000, 10000]}
+    lot_sizes = {f'Account Balance {balance}': recommend_lot_size(probability, balance) for balance in [100, 200, 500, 1000, 2000, 5000, 10000]}
 
-        result = {
-            'status': 'success',
-            'message': f'Trade signal: {trade_signal}',
-            'entry_price': entry_price,
-            'stop_loss': stop_loss,
-            'take_profit': take_profit,
-            'probability': f'{probability}%',
-            'recommended_lot_sizes': lot_sizes,
-            'timeframe_displayed': timeframe_displayed,
-        }
+    result = {
+        'status': 'success',
+        'message': f'Trade signal: {trade_signal}',
+        'entry_price': entry_price,
+        'stop_loss': stop_loss,
+        'take_profit': take_profit,
+        'probability': f'{probability}%',
+        'recommended_lot_sizes': lot_sizes,
+        'timeframe_displayed': timeframe_displayed,
+    }
 
-        logging.info(f"Trade result: {result}")
-        return jsonify(result)
-    except Exception as e:
-        logging.error(f"Error processing /api/trade request: {e}")
-        return jsonify({'errors': str(e)}), 500
+    return jsonify(result)
 
 if __name__ == '__main__':
     socketio.run(app, port=5000, debug=True)

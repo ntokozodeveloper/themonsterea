@@ -18,16 +18,19 @@ app.use(helmet());
 const WebSocket = require('ws');
 const DerivAPI = require('@deriv/deriv-api/dist/DerivAPI');
 
-const app_id = 61959; // Replace with your app_id or leave as 1089 for testing.
+const app_id = 61999; // Replace with your app_id or leave as 1089 for testing.
 const websocket = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${app_id}`);
-const api = new DerivAPI({ connection: websocket }); // Pass websocket here
+const api = new DerivAPI({ connection: websocket });
 const basic = api.basic;
 const ping_interval = 12000; // it's in milliseconds, which equals to 120 seconds
 let interval;
 
 
-
 basic.ping().then(console.log);
+
+const newLocal = new WebSocket('wss://ws.derivws.com/websockets/v3?app_id=61999');
+
+
 
 
 //Pass
@@ -99,13 +102,13 @@ app.get('/', (req, res) => {
 
 // Handle form submission with serial key validation
 app.post('/trade', async (req, res) => {
-    const { serialKey, symbol, amount, contract_type } = req.body;
+    const { serialKey, symbol, amount, contract_type, app_id, api_token } = req.body;
 
     if (!validSerialKeys.includes(serialKey)) {
         return res.status(401).json({ errors: 'Invalid serial key.' });
     }
 
-    if (!symbol || !amount || !contract_type) {
+    if (!symbol || !amount || !contract_type || !app_id || !api_token) {
         return res.status(400).json({ errors: 'All fields are required.' });
     }
 
@@ -113,15 +116,16 @@ app.post('/trade', async (req, res) => {
         const response = await axios.post('http://localhost:5000/api/trade', {
             symbol,
             amount,
-            contract_type
+            contract_type,
+            app_id,
+            api_token
         });
         io.emit('tradeUpdate', response.data);
         res.json(response.data);
     } catch (error) {
-        console.error("Error sending request to Flask server:", error.message);
+        console.error("Error sending request to Flask server, This is due to an Invalid Deriv APP ID or Token:", error.message);
         res.status(500).json({ errors: error.message });
     }
-    
 });
 
 // Error handling for undefined routes
