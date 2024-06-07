@@ -223,25 +223,57 @@ select {
     <h1 style="text-align: center;" >The Monster Trading Robot 1.0</h1>
     <h3 style="text-align: center;" >Reapers of the Forex Markets | Signals Version</h3>
    
-    <form id="tradeForm" action="/trade" method="post">
+    <form id="tradeForm" action="/trade" method="post" >
         <label for="symbol">Trading Pair:</label>
         <select name="symbol" id="symbol" required>
             <option value="">Select a trading pair</option>
             <optgroup label="Forex Pairs">
-              <option value="GBPJPY">GBP/JPY</option>
-              <option value="EURJPY">EUR/JPY</option>
-              <option value="AUDJPY">AUD/JPY</option>
-              <option value="EURUSD">EUR/USD</option>
-              <option value="GBPUSD">GBP/USD</option>
-              <option value="AUDUSD">AUD/USD</option>
-              <option value="USDJPY">USD/JPY</option>
-              <option value="USDZAR">USD/ZAR</option>
-              <option value="USDCAD">USD/CAD</option>
-              <option value="USDCHF">USD/CHF</option>
-              <option value="EURGBP">EUR/GBP</option>
-              <option value="EURCHF">EUR/CHF</option>
-              <option value="USDTRY">USD/TRY</option>
-              <option value="USDCNH">USD/CNH</option>
+                <option value="GBPJPY" symbol="GBPJPY">GBP/JPY</option>
+                <option value="EURJPY" symbol="EURJPY">EUR/JPY</option>
+                <option value="AUDJPY" symbol="AUDJPY">AUD/JPY</option>
+                <option value="EURUSD" symbol="EURUSD">EUR/USD</option>
+                <option value="GBPUSD" symbol="GBPUSD">GBP/USD</option>
+                <option value="AUDUSD" symbol="AUDUSD">AUD/USD</option>
+                <option value="USDJPY" symbol="USDJPY">USD/JPY</option>
+                <option value="USDZAR" symbol="USDZAR">USD/ZAR</option>
+                <option value="USDCAD" symbol="USDCAD">USD/CAD</option>
+                <option value="USDCHF" symbol="USDCHF">USD/CHF</option>
+                <option value="EURGBP" symbol="EURGBP">EUR/GBP</option>
+                <option value="EURCHF" symbol="EURCHF">EUR/CHF</option>
+                <option value="GBPAUD" symbol="GBPAUD">GBP/AUD</option>
+                <option value="EURNZD" symbol="EURNZD">EUR/NZD</option>
+                <option value="NZDJPY" symbol="NZDJPY">NZD/JPY</option>
+                <option value="CADCHF" symbol="CADCHF">CAD/CHF</option>
+                <option value="GBPNZD" symbol="GBPNZD">GBP/NZD</option>
+            </optgroup>
+            <optgroup label="Deriv Forex Pairs">
+                <option value="frxEURCAD" symbol="frxEURCAD">EUR/CAD</option>
+                <option value="frxEURUSD" symbol="frxEURUSD">EUR/USD</option>
+                <option value="frxGBPUSD" symbol="frxGBPUSD">GBP/USD</option>
+                <option value="frxUSDJPY" symbol="frxUSDJPY">USD/JPY</option>
+                <option value="frxAUDUSD" symbol="frxAUDUSD">AUD/USD</option>
+                <option value="frxUSDCAD" symbol="frxUSDCAD">USD/CAD</option>
+                <option value="frxUSDCHF" symbol="frxUSDCHF">USD/CHF</option>
+                <option value="frxEURJPY" symbol="frxEURJPY">EUR/JPY</option>
+                <option value="frxGBPJPY" symbol="frxGBPJPY">GBP/JPY</option>
+                <option value="frxAUDJPY" symbol="frxAUDJPY">AUD/JPY</option>
+                <option value="frxEURGBP" symbol="frxEURGBP">EUR/GBP</option>
+                <option value="frxEURCHF" symbol="frxEURCHF">EUR/CHF</option>
+                <option value="frxEURAUD" symbol="frxEURAUD">EUR/AUD</option>
+            </optgroup>
+            <optgroup label="Indices">
+                <option value="DJI30" symbol="DJI30">US 30</option>
+                <option value="SPX500" symbol="SPX500">SPX 500</option>
+                <option value="NAS100" symbol="NAS100">NAS 100</option>
+                <option value="GER30" symbol="GER30">GER 30</option>
+                <option value="UK100" symbol="UK100">UK 100</option>
+            </optgroup>
+            <optgroup label="Deriv Pairs">
+                <option value="R_100" symbol="R_100">VOL 100 Index</option>
+                <option value="R_75" symbol="R_75" >Volatility 75</option>
+                <option value="R_50" symbol="R_50">VOL 50 Index</option>
+                <option value="R_25" symbol="R_25" >Volatility 25</option>
+                <option value="R_10" symbol="R_10" >Volatility 10</option>
             </optgroup>
         </select><br><br>
         
@@ -264,8 +296,26 @@ select {
         <input type="text" id="api_token" name="api_token" required><br><br>
         
         <input type="submit" value="Get Signals">
+        <br><br>
+        <label class="disclaimer">
+            &copy; Copyright - The Monster Trading Robot,
+             Signals Version (1.0.0) | Developed by Ntokozo N.
+        </label>
     </form>
     
+    <script>
+    document.getElementById("symbol").addEventListener("change", function() {
+        var selectedOption = this.options[this.selectedIndex];
+        var symbol = selectedOption.getAttribute("symbol");
+        console.log("Symbol:", symbol);
+    });
+    </script>
+
+<style>
+    .disclaimer {
+        text-align: center;
+    }
+</style>
 
 
     <div id="signal-output" class="signal-output"></div>
