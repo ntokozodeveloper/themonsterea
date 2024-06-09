@@ -219,8 +219,8 @@ async def trade():
         return jsonify({'errors': 'Invalid input'}), 400
 
     ticker_symbol = f'{symbol}=X'
-    start_date = '2020-01-01'
-    end_date = '2026-05-29'
+    start_date = '2023-06-30'
+    end_date = '2024-06-30'
 
     intervals = ['3mo', '1mo', '1wk', '1d', '1h', '30m']
     data_frames = {}
