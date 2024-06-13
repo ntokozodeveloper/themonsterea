@@ -37,7 +37,7 @@ To get started with The Monster Expert Advisor, follow these steps:
 
 1. Clone the repository:
     ```bash
-    git clone (https://github.com/ntokozodeveloper/themonsterea.git
+    git clone https://github.com/ntokozodeveloper/themonsterea.git
     ```
 2. Navigate to the project directory:
     ```bash
@@ -53,9 +53,9 @@ To get started with The Monster Expert Advisor, follow these steps:
     cd ../frontend
     npm install
     ```
-5. Set up the Python environment and install necessary packages:
+5. Set up the Python environment and install necessary packages (web-based-ea):
     ```bash
-    cd ../python
+    cd ../
     pip install -r requirements.txt
     ```
 6. Note: web-based-ea
