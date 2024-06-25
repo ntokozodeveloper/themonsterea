@@ -14,30 +14,37 @@ from deriv_api import DerivAPI
 import websockets
 
 # Setup logging
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s - %(levelname)s - %(message)s')
 
 app = Flask(__name__)
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
+
 @socketio.on('connect')
 def handle_connect():
     print('Client connected')
+
 
 @socketio.on('disconnect')
 def handle_disconnect():
     print('Client disconnected')
 
 # Deriv Connection
+
+
 async def initialize_deriv_api(app_id, api_token):
     try:
-        api = DerivAPI(app_id=app_id, endpoint=f'wss://ws.derivws.com/websockets/v3?app_id={app_id}&auth_token={api_token}')
+        api = DerivAPI(
+            app_id=app_id, endpoint=f'wss://ws.derivws.com/websockets/v3?app_id={app_id}&auth_token={api_token}')
         await api.api_connect()
         logging.info("Successfully connected to DerivAPI")
         return api
     except Exception as e:
         logging.error(f"Failed to connect to DerivAPI: {e}")
         return None
+
 
 async def fetch_deriv_data(api, symbol, interval, start_date, end_date):
     try:
@@ -54,7 +61,8 @@ async def fetch_deriv_data(api, symbol, interval, start_date, end_date):
         deriv_interval = interval_mapping.get(interval, '1d')
 
         # Log the request details
-        logging.debug(f"Fetching Deriv data for {symbol} with interval {interval} from {start_date} to {end_date}")
+        logging.debug(
+            f"Fetching Deriv data for {symbol} with interval {interval} from {start_date} to {end_date}")
 
         ticks_history_request = {
             "ticks_history": symbol,
@@ -67,30 +75,37 @@ async def fetch_deriv_data(api, symbol, interval, start_date, end_date):
 
         response = await api.send(ticks_history_request)
         if 'error' in response:
-            logging.error(f"Error fetching Deriv data: {response['error']['message']}")
+            logging.error(
+                f"Error fetching Deriv data: {response['error']['message']}")
             return pd.DataFrame()
-        
+
         data = response['candles']
         df = pd.DataFrame(data)
         df['timestamp'] = pd.to_datetime(df['epoch'], unit='s')
         df.set_index('timestamp', inplace=True)
-        df.rename(columns={'open': 'Open', 'high': 'High', 'low': 'Low', 'close': 'Close', 'volume': 'Volume'}, inplace=True)
-        logging.info(f"Successfully fetched Deriv data for {symbol} with interval {interval}")
+        df.rename(columns={'open': 'Open', 'high': 'High', 'low': 'Low',
+                  'close': 'Close', 'volume': 'Volume'}, inplace=True)
+        logging.info(
+            f"Successfully fetched Deriv data for {symbol} with interval {interval}")
         return df[['Open', 'High', 'Low', 'Close', 'Volume']]
     except Exception as e:
         logging.error(f"Error fetching Deriv data: {e}")
         return pd.DataFrame()
 
+
 def combine_data(yf_data, deriv_data):
     combined_data = pd.concat([yf_data, deriv_data])
-    combined_data = combined_data[~combined_data.index.duplicated(keep='first')]
+    combined_data = combined_data[~combined_data.index.duplicated(
+        keep='first')]
     combined_data.sort_index(inplace=True)
     return combined_data
+
 
 def calculate_probability(atr, close_price):
     max_atr = close_price * 0.1
     probability = (atr / max_atr) * 100
     return round(probability, 2)
+
 
 def recommend_lot_size(probability, account_balance):
     risk_per_trade = 0.01
@@ -102,45 +117,57 @@ def recommend_lot_size(probability, account_balance):
         lot_size_factor = 0.01
     else:
         lot_size_factor = 0.005
-    
+
     lot_size = account_balance * risk_per_trade * lot_size_factor
     return round(lot_size, 2)
 
+
 def download_data(ticker_symbol, interval, start_date, end_date):
-    logging.info(f"Downloading data for {ticker_symbol} from {start_date} to {end_date} with interval {interval}")
+    logging.info(
+        f"Downloading data for {ticker_symbol} from {start_date} to {end_date} with interval {interval}")
     try:
-        data = yf.download(ticker_symbol, start=start_date, end=end_date, interval=interval)
+        data = yf.download(ticker_symbol, start=start_date,
+                           end=end_date, interval=interval)
         if data.empty:
-            logging.info(f"No data available for {ticker_symbol} at interval {interval}")
+            logging.info(
+                f"No data available for {ticker_symbol} at interval {interval}")
             return None
-        logging.info(f"Successfully downloaded data for {ticker_symbol} at interval {interval}")
+        logging.info(
+            f"Successfully downloaded data for {ticker_symbol} at interval {interval}")
         return data
     except Exception as e:
-        logging.error(f"Error downloading data for {ticker_symbol} at interval {interval}: {e}")
+        logging.error(
+            f"Error downloading data for {ticker_symbol} at interval {interval}: {e}")
         return None
+
 
 def process_data(data_frames):
     signals = {}
-    
+
     for interval, data in data_frames.items():
         logging.info(f"Processing data for interval {interval}")
         data = dropna(data)
-        
+
         if len(data) < 50:
             logging.info(f"Not enough data for interval {interval}")
             continue
-        
+
         data['EMA_50'] = talib.EMA(data['Close'], timeperiod=50)
         data['RSI'] = talib.RSI(data['Close'], timeperiod=14)
-        data['MACD'], data['MACD_Signal'], data['MACD_Hist'] = talib.MACD(data['Close'], fastperiod=12, slowperiod=26, signalperiod=9)
-        data['Upper_BB'], data['Middle_BB'], data['Lower_BB'] = talib.BBANDS(data['Close'], timeperiod=20)
-        data['Stoch_K'], data['Stoch_D'] = talib.STOCH(data['High'], data['Low'], data['Close'], fastk_period=14, slowk_period=3, slowd_period=3)
-        data['ATR'] = talib.ATR(data['High'], data['Low'], data['Close'], timeperiod=14)
+        data['MACD'], data['MACD_Signal'], data['MACD_Hist'] = talib.MACD(
+            data['Close'], fastperiod=12, slowperiod=26, signalperiod=9)
+        data['Upper_BB'], data['Middle_BB'], data['Lower_BB'] = talib.BBANDS(
+            data['Close'], timeperiod=20)
+        data['Stoch_K'], data['Stoch_D'] = talib.STOCH(
+            data['High'], data['Low'], data['Close'], fastk_period=14, slowk_period=3, slowd_period=3)
+        data['ATR'] = talib.ATR(data['High'], data['Low'],
+                                data['Close'], timeperiod=14)
         data['OBV'] = talib.OBV(data['Close'], data['Volume'])
-        
+
         if len(data) >= 15:
-            data = add_all_ta_features(data, open="Open", high="High", low="Low", close="Close", volume="Volume", fillna=True)
-        
+            data = add_all_ta_features(
+                data, open="Open", high="High", low="Low", close="Close", volume="Volume", fillna=True)
+
         conditions = [
             (data['EMA_50'] > data['Close']),
             (data['RSI'] < 30),
@@ -148,40 +175,47 @@ def process_data(data_frames):
             (data['Close'] < data['Lower_BB']),
             (data['Stoch_K'] < data['Stoch_D']),
         ]
-        
+
         data['Signal'] = np.where(np.all(conditions, axis=0), 1, 0)
         data['Position'] = data['Signal'].diff()
         signals[interval] = data.iloc[-1] if not data.empty else None
-        logging.info(f"Processed data for interval {interval}: {signals[interval]}")
-        
+        logging.info(
+            f"Processed data for interval {interval}: {signals[interval]}")
+
     return signals
+
 
 def generate_trade_signals(signals):
     logging.info("Generating trade signals")
-    
+
     for interval in ['30m', '1h']:
         if signals.get(interval) is not None:
             recent_signal = signals[interval]
             trade_signal = 'buy' if recent_signal['Signal'] == 1 else 'sell'
             entry_price = recent_signal['Close']
-            probability = calculate_probability(recent_signal['ATR'], recent_signal['Close'])
-            logging.info(f"Trade signal: {trade_signal} for interval {interval}")
+            probability = calculate_probability(
+                recent_signal['ATR'], recent_signal['Close'])
+            logging.info(
+                f"Trade signal: {trade_signal} for interval {interval}")
             return trade_signal, entry_price, probability, interval
 
     if signals.get('1d') is not None:
         recent_signal = signals['1d']
         trade_signal = 'buy' if recent_signal['Signal'] == 1 else 'sell'
         entry_price = recent_signal['Close']
-        probability = calculate_probability(recent_signal['ATR'], recent_signal['Close'])
+        probability = calculate_probability(
+            recent_signal['ATR'], recent_signal['Close'])
         logging.info(f"Trade signal: {trade_signal} for daily interval")
         return trade_signal, entry_price, probability, '1d'
 
     logging.info("No trade signal generated")
     return 'hold', None, 0, 'No signal'
 
+
 @app.route('/api/trade', methods=['POST'])
 async def trade():
     logging.info("Received request at /api/trade")
+    return app. send_static_file("web-based-ea-frontend/public/index.html")
     data = request.json
 
     symbol = data.get('symbol')
@@ -215,16 +249,22 @@ async def trade():
             data_frames[interval] = yf_data
 
     signals = process_data(data_frames)
-    trade_signal, entry_price, probability, timeframe_displayed = generate_trade_signals(signals)
+    trade_signal, entry_price, probability, timeframe_displayed = generate_trade_signals(
+        signals)
 
     if trade_signal != 'hold':
-        stop_loss = entry_price * (1 - stop_loss_percent / 100) if trade_signal == 'buy' else entry_price * (1 + stop_loss_percent / 100)
-        take_profit = entry_price * (1 + take_profit_percent / 100) if trade_signal == 'buy' else entry_price * (1 - take_profit_percent / 100)
+        stop_loss = entry_price * \
+            (1 - stop_loss_percent / 100) if trade_signal == 'buy' else entry_price * \
+            (1 + stop_loss_percent / 100)
+        take_profit = entry_price * \
+            (1 + take_profit_percent / 100) if trade_signal == 'buy' else entry_price * \
+            (1 - take_profit_percent / 100)
     else:
         stop_loss = None
         take_profit = None
 
-    lot_sizes = {f'Account Balance {balance}': recommend_lot_size(probability, balance) for balance in [100, 200, 500, 1000, 2000, 5000, 10000]}
+    lot_sizes = {f'Account Balance {balance}': recommend_lot_size(
+        probability, balance) for balance in [100, 200, 500, 1000, 2000, 5000, 10000]}
 
     result = {
         'status': 'success',
